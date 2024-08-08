@@ -11,7 +11,7 @@
                 <p class="card-text">{{ Str::limit($post->content, 200) }}</p>
                 
                 @if($post->image)
-                    <img src="{{ asset('storage/' . $post->image) }}" class="img-fluid mb-3" alt="{{ $post->title }}" style="max-height: 200px; width: auto;">
+                    <img src="{{ $post->image }}" class="img-fluid mb-3" alt="{{ $post->title }}" style="max-height: 200px; width: auto;">
                 @endif
                 
                 <div class="mb-3">

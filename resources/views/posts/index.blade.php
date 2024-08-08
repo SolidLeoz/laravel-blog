@@ -11,11 +11,11 @@
                 <p class="card-text">{{ Str::limit($post->content, 200) }}</p>
                 
                 @if($post->image)
-                    <img src="{{ asset('storage/' . $post->image) }}" class="img-fluid mb-3" alt="{{ $post->title }}">
+                    <img src="{{ $post->image }}" class="img-fluid mb-3" alt="{{ $post->title }}">
                 @endif
                 
                 @if($post->video)
-                    <video src="{{ asset('storage/' . $post->video) }}" controls class="img-fluid mb-3"></video>
+                    <video src="{{ $post->video }}" controls class="img-fluid mb-3"></video>
                 @endif
                 
                 <div class="mb-3">
