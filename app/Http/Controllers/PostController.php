@@ -127,61 +127,80 @@ class PostController extends Controller
     }
 
     public function destroy(Post $post)
-    {
+{
+    try {
         // Delete image from Cloudinary if exists
         if ($post->image) {
+            Log::info('Attempting to delete image: ' . $post->image);
             $this->deleteCloudinaryAsset($post->image);
         }
 
         // Delete video from Cloudinary if exists
         if ($post->video) {
+            Log::info('Attempting to delete video: ' . $post->video);
             $this->deleteCloudinaryAsset($post->video);
         }
 
         $post->delete();
 
         return redirect()->route('posts.index')->with('success', 'Post deleted successfully.');
+    } catch (\Exception $e) {
+        Log::error('Error deleting post: ' . $e->getMessage());
+        return redirect()->route('posts.index')->with('error', 'An error occurred while deleting the post.');
     }
+}
 
-    private function deleteCloudinaryAsset($url)
-    {
-        $publicId = $this->getPublicIdFromUrl($url);
-        if ($publicId) {
+private function deleteCloudinaryAsset($url)
+{
+    $publicId = $this->getPublicIdFromUrl($url);
+    Log::info('Attempting to delete Cloudinary asset with public ID: ' . $publicId);
+    
+    if ($publicId) {
+        try {
             $result = Cloudinary::destroy($publicId);
             Log::info('Cloudinary deletion result: ' . json_encode($result));
-        } else {
-            Log::warning('Could not extract public ID from URL: ' . $url);
+            
+            if ($result['result'] === 'ok') {
+                Log::info('Asset deleted successfully from Cloudinary: ' . $publicId);
+            } else {
+                Log::error('Failed to delete asset from Cloudinary: ' . $publicId . '. Result: ' . json_encode($result));
+            }
+        } catch (\Exception $e) {
+            Log::error('Error deleting asset from Cloudinary: ' . $e->getMessage());
         }
+    } else {
+        Log::warning('Could not extract public ID from URL: ' . $url);
+    }
+}
+
+private function getPublicIdFromUrl($url)
+{
+    $parsedUrl = parse_url($url);
+    if (!isset($parsedUrl['path'])) {
+        return null;
     }
 
-    private function getPublicIdFromUrl($url)
-    {
-        // Esempio di URL Cloudinary:
-        // https://res.cloudinary.com/your-cloud-name/image/upload/v1234567890/folder/image_name.jpg
-        
-        $parsedUrl = parse_url($url);
-        if (!isset($parsedUrl['path'])) {
-            return null;
-        }
-
-        $pathParts = explode('/', trim($parsedUrl['path'], '/'));
-        
-        // Rimuovi 'image' o 'video' e 'upload' dal percorso
-        $pathParts = array_values(array_diff($pathParts, ['image', 'video', 'upload']));
-        
-        // Rimuovi la versione (inizia con 'v' seguito da numeri)
-        if (isset($pathParts[0]) && preg_match('/^v\d+$/', $pathParts[0])) {
-            array_shift($pathParts);
-        }
-
-        // Il public ID è il resto del percorso
-        $publicId = implode('/', $pathParts);
-        
-        // Rimuovi l'estensione del file
-        $publicId = preg_replace('/\.[^.]+$/', '', $publicId);
-
-        return $publicId;
+    $pathParts = explode('/', trim($parsedUrl['path'], '/'));
+    
+    // Rimuovi il nome del cloud (solitamente il primo elemento)
+    array_shift($pathParts);
+    
+    // Rimuovi 'image' o 'video' e 'upload' dal percorso
+    $pathParts = array_values(array_diff($pathParts, ['image', 'video', 'upload']));
+    
+    // Rimuovi la versione (inizia con 'v' seguito da numeri)
+    if (isset($pathParts[0]) && preg_match('/^v\d+$/', $pathParts[0])) {
+        array_shift($pathParts);
     }
+
+    // Il public ID è il resto del percorso
+    $publicId = implode('/', $pathParts);
+    
+    // Rimuovi l'estensione del file se presente
+    $publicId = preg_replace('/\.[^.]+$/', '', $publicId);
+
+    return $publicId;
+}
 
 
 public function indexByTag(Tag $tag)
