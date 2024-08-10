@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+use Illuminate\Support\Str;
 
 class PostController extends Controller
 {
@@ -23,10 +24,13 @@ class PostController extends Controller
         return view('posts.index', compact('posts'));
     }
 
+
     public function create()
     {
         $tags = Tag::all();
-        return view('posts.create', compact('tags'));
+        $submitToken = Str::random(40);
+        session(['post_submit_token' => $submitToken]);
+        return view('posts.create', compact('submitToken' , 'tags'));
     }
 
     public function store(Request $request)
@@ -36,8 +40,16 @@ class PostController extends Controller
             'content' => 'required',
             'image' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
             'video' => 'mimes:mp4,mov,ogg|max:20480',
-            'tags' => 'nullable|string'
+            'tags' => 'nullable|string',
+            'submit_token' => 'required'
         ]);
+
+        if ($request->input('submit_token') !== session('post_submit_token')) {
+            return redirect()->route('posts.index')->with('error', 'This form has already been submitted.');
+        }
+
+         // Rimuovi il token dalla sessione per prevenire ulteriori invii
+         session()->forget('post_submit_token');
 
         $post = new Post([
             'title' => $request->title,
@@ -75,13 +87,18 @@ class PostController extends Controller
         return redirect()->route('posts.index')->with('success', 'Post created successfully.');
     }
 
+    public function edit(Post $post)
+    {
+        return view('posts.edit', compact('post'));
+    }
+
     public function update(Request $request, Post $post)
     {
         $request->validate([
             'title' => 'required|max:255',
             'content' => 'required',
-            'image' => 'image|mimes:jpeg,png,jpg,gif|max:2048',
-            'video' => 'mimes:mp4,mov,ogg|max:20480',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'video' => 'nullable|mimes:mp4,mov,ogg|max:20480',
             'tags' => 'nullable|string'
         ]);
 
@@ -121,6 +138,8 @@ class PostController extends Controller
                 $tagIds[] = $tag->id;
             }
             $post->tags()->sync($tagIds);
+        } else {
+            $post->tags()->detach();
         }
 
         return redirect()->route('posts.show', $post)->with('success', 'Post updated successfully.');

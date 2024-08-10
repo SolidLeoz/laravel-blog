@@ -25,6 +25,15 @@
                 </div>
                 
                 <a href="{{ route('posts.show', $post) }}" class="btn btn-primary">Read More</a>
+
+                @auth
+                            <a href="{{ route('posts.edit', $post) }}" class="btn btn-secondary">Edit</a>
+                            <form action="{{ route('posts.destroy', $post) }}" method="POST" class="d-inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this post?')">Delete</button>
+                            </form>
+                    @endauth
             </div>
             <div class="card-footer text-muted">
                 Posted on {{ $post->created_at->format('F d, Y') }}
