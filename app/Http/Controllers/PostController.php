@@ -7,6 +7,7 @@ use App\Models\Tag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 use Illuminate\Support\Str;
 
@@ -241,6 +242,46 @@ public function search(Request $request)
 
 public function show(Post $post) {
     return view('posts.show', compact('post'));
+}
+
+public function batchDelete(Request $request)
+{
+    $postIds = $request->input('posts', []);
+
+    DB::beginTransaction();
+
+    try {
+        $posts = Post::whereIn('id', $postIds)->get();
+        $deletedIds = [];
+
+        foreach ($posts as $post) {
+            // Elimina le risorse associate (immagini, video) da Cloudinary
+            if ($post->image) {
+                $this->deleteCloudinaryAsset($post->image);
+            }
+            if ($post->video) {
+                $this->deleteCloudinaryAsset($post->video);
+            }
+
+            // Elimina il post
+            $post->delete();
+            $deletedIds[] = $post->id;
+        }
+
+        DB::commit();
+
+        Log::info('Posts deleted successfully', ['deleted_ids' => $deletedIds]);
+
+        return response()->json([
+            'success' => true,
+            'message' => count($deletedIds) . ' posts deleted successfully',
+            'deletedIds' => $deletedIds
+        ]);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error deleting posts', ['error' => $e->getMessage()]);
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
 }
 }
 

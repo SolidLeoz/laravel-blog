@@ -13,4 +13,15 @@ class Post extends Model
     {
         return $this->belongsToMany(Tag::class);
     }
+
+    protected static function boot()
+{
+    parent::boot();
+
+    static::deleting(function ($post) {
+        $post->tags()->detach();
+        // Aggiungi qui altre operazioni di pulizia se necessario
+    });
+}
+
 }
